@@ -19,6 +19,7 @@ const (
 const (
 	inputCommand inputMode = iota
 	inputFilter
+	inputDetailSearch
 )
 
 // App holds the entire TUI state.
@@ -38,6 +39,14 @@ type App struct {
 	// State
 	view  viewMode
 	imode inputMode
+
+	// Detail view search state
+	detailRaw      string
+	detailIsLogs   bool
+	detailWrap     bool
+	detailSearch   string
+	detailMatchCnt int
+	detailMatchIdx int
 
 	// UI widgets
 	root     *tview.Flex
@@ -70,12 +79,10 @@ func (a *App) buildUI() {
 	// Use terminal's own background everywhere.
 	tview.Styles.PrimitiveBackgroundColor = tcell.ColorDefault
 
-	// ── Header ──────────────────────────────────────────────────────────────
 	a.header = tview.NewTextView().
 		SetDynamicColors(true)
 	a.header.SetBackgroundColor(tcell.ColorDefault)
 
-	// ── Resource table ──────────────────────────────────────────────────────
 	a.table = tview.NewTable().
 		SetBorders(false).
 		SetSelectable(true, false).
@@ -85,26 +92,22 @@ func (a *App) buildUI() {
 			Foreground(tcell.ColorWhite))
 	a.table.SetBackgroundColor(tcell.ColorDefault)
 
-	// ── Detail / describe / logs / yaml view ────────────────────────────────
 	a.detail = tview.NewTextView().
 		SetScrollable(true).
 		SetWrap(false).
 		SetDynamicColors(false)
 	a.detail.SetBackgroundColor(tcell.ColorDefault)
 
-	// ── Command / filter input bar ───────────────────────────────────────────
 	a.cmdInput = tview.NewInputField().
 		SetFieldBackgroundColor(tcell.ColorDefault).
 		SetFieldTextColor(tcell.ColorWhite).
 		SetLabelColor(tcell.ColorYellow)
 	a.cmdInput.SetBackgroundColor(tcell.ColorDefault)
 
-	// ── Hint bar ─────────────────────────────────────────────────────────────
 	a.hint = tview.NewTextView().
 		SetDynamicColors(true)
 	a.hint.SetBackgroundColor(tcell.ColorDefault)
 
-	// ── Separator ─────────────────────────────────────────────────────────────
 	sep := tview.NewBox().
 		SetBackgroundColor(tcell.ColorDefault).
 		SetDrawFunc(func(screen tcell.Screen, x, y, width, _ int) (int, int, int, int) {
@@ -115,12 +118,10 @@ func (a *App) buildUI() {
 			return x, y, width, 1
 		})
 
-	// ── Pages: list vs detail ─────────────────────────────────────────────────
 	a.pages = tview.NewPages().
 		AddPage("list", a.table, true, true).
 		AddPage("detail", a.detail, true, false)
 
-	// ── Root layout ───────────────────────────────────────────────────────────
 	// cmdInput starts hidden (fixedSize=0, proportion=0 = no space allocated)
 	a.root = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.header, 4, 0, false).

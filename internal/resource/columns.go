@@ -36,8 +36,6 @@ func ColumnsFor(resource string) ([]Column, bool) {
 	return cols, ok
 }
 
-// ─── Default column sets ──────────────────────────────────────────────────────
-
 var defaults = map[string][]Column{
 	"pods":                     podColumns,
 	"services":                 serviceColumns,
@@ -258,8 +256,6 @@ var eventColumns = []Column{
 		return msg
 	}),
 }
-
-// ─── Computed helpers ─────────────────────────────────────────────────────────
 
 func podReady(o map[string]any) string {
 	status, _ := o["status"].(map[string]any)
@@ -509,8 +505,6 @@ func formatAge(d time.Duration) string {
 	}
 	return fmt.Sprintf("%dd%dh", days, hours)
 }
-
-// ─── JSON field helpers ───────────────────────────────────────────────────────
 
 // getPath traverses a nested map[string]any following the given keys.
 func getPath(obj map[string]any, keys ...string) string {

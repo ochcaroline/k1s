@@ -86,7 +86,6 @@ const defaultConfigTemplate = `# k1s column configuration
 #
 # Uncomment a block to activate it, then edit freely.
 #
-# ─── Examples ────────────────────────────────────────────────────────────────
 #
 # pods:
 #   - header: NAME

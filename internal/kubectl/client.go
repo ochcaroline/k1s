@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -125,6 +126,19 @@ func (c *Client) Logs(namespace, name string) (string, error) {
 	return kubectlOutput(args...)
 }
 
+// Edit opens an interactive kubectl edit session, connecting stdin/stdout/stderr
+// directly to the terminal. Must be called inside tview's Suspend callback.
+func (c *Client) Edit(resource, namespace, name string) error {
+	args := c.baseArgs()
+	args = append(args, "edit", resource, name)
+	args = append(args, c.nsArgs(namespace)...)
+	cmd := exec.Command("kubectl", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 // Delete deletes a resource.
 func (c *Client) Delete(resource, namespace, name string) (string, error) {
 	args := c.baseArgs()
@@ -143,7 +157,14 @@ func (c *Client) nsArgs(namespace string) []string {
 	return nil
 }
 
-// CurrentContext returns the active kubeconfig context name.
+// SwitchContext runs kubectl config use-context to make name the active context.
+func (c *Client) SwitchContext(name string) error {
+	out, err := exec.Command("kubectl", "config", "use-context", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
 func (c *Client) CurrentContext() string {
 	if c.Context != "" {
 		return c.Context

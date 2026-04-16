@@ -34,14 +34,33 @@ func (a *App) updateHeader() {
 
 func (a *App) updateHint() {
 	if a.view == viewDetail {
-		a.hint.SetText("  [gray]Esc/q[-] back  [gray]↑↓[-] scroll  [gray]g[-] top  [gray]G[-] bottom")
+		wrapLabel := "[gray]w[-] wrap"
+		if a.detailWrap {
+			wrapLabel = "[green]w[-] wrap"
+		}
+		if a.detailSearch != "" && a.detailMatchCnt > 0 {
+			a.hint.SetText(fmt.Sprintf(
+				"  [gray]Esc[-] clear  [gray]↑↓[-] scroll  [gray]n/N[-] jump  [yellow]%d/%d[-] matches  %s",
+				a.detailMatchIdx+1, a.detailMatchCnt, wrapLabel))
+		} else if a.detailSearch != "" {
+			a.hint.SetText(fmt.Sprintf(
+				`  [gray]Esc[-] clear  [red]no matches for "%s"[-]  %s`, a.detailSearch, wrapLabel))
+		} else {
+			a.hint.SetText(fmt.Sprintf(
+				"  [gray]Esc/q[-] back  [gray]↑↓[-] scroll  [gray]g[-] top  [gray]G[-] bottom  [gray]y[-] yaml  [gray]/[-] search  %s",
+				wrapLabel))
+		}
+		return
+	}
+	if a.resource == "_contexts" {
+		a.hint.SetText("  [gray]:[-] cmd  [gray]↵[-] switch context  [gray]d[-] describe  [gray]y[-] copy  [gray]/[-] filter  [gray]R[-] refresh")
 		return
 	}
 	if a.resource == "namespaces" {
-		a.hint.SetText("  [gray]:[-] cmd  [gray]↵[-] select ns→pods  [gray]d[-] describe  [gray]y[-] yaml  [gray]c[-] copy  [gray]/[-] filter  [gray]R[-] refresh")
+		a.hint.SetText("  [gray]:[-] cmd  [gray]↵[-] select ns→pods  [gray]d[-] describe  [gray]y[-] copy  [gray]/[-] filter  [gray]R[-] refresh")
 		return
 	}
-	a.hint.SetText("  [gray]:[-] cmd  [gray]↵/d[-] describe  [gray]y[-] yaml  [gray]l[-] logs  [gray]c[-] copy  [gray]/[-] filter  [gray]a[-] all-ns  [gray]R[-] refresh")
+	a.hint.SetText("  [gray]:[-] cmd  [gray]↵/d[-] describe  [gray]l[-] logs  [gray]e[-] edit  [gray]y[-] copy  [gray]/[-] filter  [gray]a[-] all-ns  [gray]R[-] refresh")
 }
 
 // statusColor maps common kubectl status strings to display colors.

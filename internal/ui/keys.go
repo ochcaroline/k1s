@@ -18,16 +18,16 @@ func (a *App) setupKeys() {
 			case '/':
 				a.openInput(inputFilter, a.filter)
 				return nil
+			case 'e':
+				a.openEdit()
+				return nil
 			case 'd':
 				a.openDescribe()
-				return nil
-			case 'y':
-				a.openYAML()
 				return nil
 			case 'l':
 				a.openLogs()
 				return nil
-			case 'c':
+			case 'y':
 				a.copyName()
 				return nil
 			case 'R':
@@ -40,6 +40,8 @@ func (a *App) setupKeys() {
 		case tcell.KeyEnter:
 			if a.resource == "namespaces" {
 				a.selectNamespace()
+			} else if a.resource == "_contexts" {
+				a.selectContext()
 			} else {
 				a.openDescribe()
 			}
@@ -67,6 +69,21 @@ func (a *App) setupKeys() {
 			switch event.Rune() {
 			case 'q':
 				a.switchToList()
+				return nil
+			case '/':
+				a.openDetailSearch()
+				return nil
+			case 'n':
+				a.nextMatch(1)
+				return nil
+			case 'N':
+				a.nextMatch(-1)
+				return nil
+			case 'w':
+				a.toggleWrap()
+				return nil
+			case 'y':
+				a.openYAML()
 				return nil
 			case 'g':
 				a.detail.ScrollToBeginning()

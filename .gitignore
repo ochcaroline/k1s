@@ -1,6 +1,9 @@
 # Binary
 k1s
 
+#Build
+dist
+
 # Go
 *.test
 *.out

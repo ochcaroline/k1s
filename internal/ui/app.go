@@ -48,6 +48,10 @@ type App struct {
 	detailMatchCnt int
 	detailMatchIdx int
 
+	// Deletion confirmation
+	waitingForDelete bool
+	pendingDKey      bool
+
 	// UI widgets
 	root     *tview.Flex
 	header   *tview.TextView
@@ -88,7 +92,7 @@ func (a *App) buildUI() {
 		SetSelectable(true, false).
 		SetFixed(1, 0).
 		SetSelectedStyle(tcell.StyleDefault.
-			Background(tcell.NewRGBColor(40, 60, 100)).
+			Background(tcell.Color162).
 			Foreground(tcell.ColorWhite))
 	a.table.SetBackgroundColor(tcell.ColorDefault)
 
@@ -101,7 +105,7 @@ func (a *App) buildUI() {
 	a.cmdInput = tview.NewInputField().
 		SetFieldBackgroundColor(tcell.ColorDefault).
 		SetFieldTextColor(tcell.ColorWhite).
-		SetLabelColor(tcell.ColorYellow)
+		SetLabelColor(tcell.Color204)
 	a.cmdInput.SetBackgroundColor(tcell.ColorDefault)
 
 	a.hint = tview.NewTextView().

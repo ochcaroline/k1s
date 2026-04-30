@@ -103,22 +103,22 @@ func (a *App) renderTable(cols []string, rows [][]string) {
 		return
 	}
 
-	// Header row
 	for c, col := range cols {
-		a.table.SetCell(0, c, tview.NewTableCell(" "+col+" ").
-			SetTextColor(tcell.ColorYellow).
+		a.table.SetCell(0, c, tview.NewTableCell("  [::b]"+col+"[::-]  ").
+			SetTextColor(tcell.ColorLightBlue).
 			SetSelectable(false).
 			SetExpansion(1).
 			SetAttributes(tcell.AttrBold))
 	}
 
-	// Data rows (filtered)
 	r := 1
 	for _, row := range a.filterRows(rows) {
 		for c, cell := range row {
+			textColor := statusColor(cell)
+
 			a.table.SetCell(r, c, tview.NewTableCell(" "+cell+" ").
-				SetExpansion(1).
-				SetTextColor(statusColor(cell)))
+				SetExpansion(0).
+				SetTextColor(textColor))
 		}
 		r++
 	}

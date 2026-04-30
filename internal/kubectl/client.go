@@ -1,9 +1,9 @@
 package kubectl
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -90,7 +90,16 @@ func (c *Client) ListJSON(resource string) ([]map[string]any, error) {
 	return result.Items, nil
 }
 
+// Delete deletes a resource.
+func (c *Client) Delete(resource, namespace, name string) (string, error) {
+	args := c.baseArgs()
+	args = append(args, "delete", resource, name)
+	args = append(args, c.nsArgs(namespace)...)
+	return kubectlOutput(args...)
+}
+
 func (c *Client) listContexts() (string, []string, error) {
+
 	out, err := exec.Command("kubectl", "config", "get-contexts").CombinedOutput()
 	if err != nil {
 		return "", nil, fmt.Errorf("%s", strings.TrimSpace(string(out)))
@@ -139,12 +148,12 @@ func (c *Client) Edit(resource, namespace, name string) error {
 	return cmd.Run()
 }
 
-// Delete deletes a resource.
-func (c *Client) Delete(resource, namespace, name string) (string, error) {
-	args := c.baseArgs()
-	args = append(args, "delete", resource, name)
-	args = append(args, c.nsArgs(namespace)...)
-	return kubectlOutput(args...)
+func (c *Client) SwitchContext(name string) error {
+	out, err := exec.Command("kubectl", "config", "use-context", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func (c *Client) nsArgs(namespace string) []string {
@@ -157,14 +166,15 @@ func (c *Client) nsArgs(namespace string) []string {
 	return nil
 }
 
-// SwitchContext runs kubectl config use-context to make name the active context.
-func (c *Client) SwitchContext(name string) error {
-	out, err := exec.Command("kubectl", "config", "use-context", name).CombinedOutput()
+func kubectlOutput(args ...string) (string, error) {
+	out, err := exec.Command("kubectl", args...).CombinedOutput()
+	output := strings.TrimSpace(string(out))
 	if err != nil {
-		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("%s", output)
 	}
-	return nil
+	return output, nil
 }
+
 func (c *Client) CurrentContext() string {
 	if c.Context != "" {
 		return c.Context
@@ -192,11 +202,22 @@ func (c *Client) CurrentNamespace() string {
 	return strings.TrimSpace(string(out))
 }
 
-func kubectlOutput(args ...string) (string, error) {
-	var buf bytes.Buffer
-	cmd := exec.Command("kubectl", args...)
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	_ = cmd.Run()
-	return buf.String(), nil
+// CreateJobFromCronjob creates a job from a cronjob with an auto-generated name.
+func (c *Client) CreateJobFromCronjob(namespace, cronjobName string) (string, error) {
+	jobName := fmt.Sprintf("%s-manual-%s", cronjobName, randomSuffix(5))
+	args := c.baseArgs()
+	args = append(args, "create", "job", jobName, fmt.Sprintf("--from=cronjob/%s", cronjobName))
+	args = append(args, c.nsArgs(namespace)...)
+	return kubectlOutput(args...)
 }
+
+// randomSuffix generates a random lowercase alphanumeric string of length n.
+func randomSuffix(n int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -9,6 +10,20 @@ import (
 
 func (a *App) setupKeys() {
 	a.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.waitingForDelete {
+			switch event.Rune() {
+			case 'y', 'Y':
+				a.waitingForDelete = false
+				a.deleteSelected()
+				return nil
+			default:
+				a.waitingForDelete = false
+				a.updateHeader()
+				a.updateHint()
+				return nil
+			}
+		}
+
 		switch event.Key() {
 		case tcell.KeyRune:
 			switch event.Rune() {
@@ -22,8 +37,7 @@ func (a *App) setupKeys() {
 				a.openEdit()
 				return nil
 			case 'd':
-				a.openDescribe()
-				return nil
+				return a.handleDKey()
 			case 'l':
 				a.openLogs()
 				return nil
@@ -35,6 +49,9 @@ func (a *App) setupKeys() {
 				return nil
 			case 'a':
 				a.toggleAllNS()
+				return nil
+			case 'c':
+				a.createJobFromCronjob()
 				return nil
 			}
 		case tcell.KeyEnter:
@@ -100,6 +117,62 @@ func (a *App) setupKeys() {
 	})
 }
 
+func (a *App) handleDKey() *tcell.EventKey {
+	if a.pendingDKey {
+		a.pendingDKey = false
+		a.confirmDelete()
+		return nil
+	}
+
+	a.pendingDKey = true
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		a.tapp.QueueUpdateDraw(func() {
+			if a.pendingDKey {
+				a.pendingDKey = false
+			}
+		})
+	}()
+	return nil
+}
+
+func (a *App) confirmDelete() {
+	ns, name := a.selectedResource()
+	if name == "" {
+		return
+	}
+	a.waitingForDelete = true
+	msg := fmt.Sprintf("[red]delete %s %s? (y/n):[-]", a.resource, name)
+	if ns != "" {
+		msg = fmt.Sprintf("[red]delete %s %s/%s? (y/n):[-]", a.resource, ns, name)
+	}
+	a.renderHeader(msg)
+	a.updateHint()
+}
+
+func (a *App) deleteSelected() {
+	ns, name := a.selectedResource()
+	if name == "" {
+		return
+	}
+
+	go func() {
+		_, err := a.client.Delete(a.resource, ns, name)
+		a.tapp.QueueUpdateDraw(func() {
+			if err != nil {
+				a.renderHeader(fmt.Sprintf("[red]error deleting: %s[-]", err))
+			} else {
+				a.renderHeader(fmt.Sprintf("[gray]deleted: %s[-]", name))
+				a.reload()
+			}
+			go func() {
+				time.Sleep(2000 * time.Millisecond)
+				a.tapp.QueueUpdateDraw(a.updateHeader)
+			}()
+		})
+	}()
+}
+
 func (a *App) copyName() {
 	_, name := a.selectedResource()
 	if name == "" {
@@ -112,5 +185,31 @@ func (a *App) copyName() {
 	go func() {
 		time.Sleep(1500 * time.Millisecond)
 		a.tapp.QueueUpdateDraw(a.updateHeader)
+	}()
+}
+
+func (a *App) createJobFromCronjob() {
+	if a.resource != "cronjobs" {
+		a.renderHeader("[yellow]⚠ Can only create jobs from cronjobs[-]")
+		return
+	}
+
+	ns, name := a.selectedResource()
+	if name == "" {
+		return
+	}
+
+	go func() {
+		jobName, err := a.client.CreateJobFromCronjob(ns, name)
+		a.tapp.QueueUpdateDraw(func() {
+			if err != nil {
+				a.renderHeader(fmt.Sprintf("[red]✗ error creating job: %s[-]", err))
+			} else {
+				a.renderHeader(fmt.Sprintf("[green]✓ created job: %s[-]", jobName))
+				time.AfterFunc(2*time.Second, func() {
+					a.tapp.QueueUpdateDraw(a.updateHeader)
+				})
+			}
+		})
 	}()
 }

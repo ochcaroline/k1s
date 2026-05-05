@@ -50,15 +50,21 @@ func (a *App) openLogs() {
 	if name == "" {
 		return
 	}
-	a.switchToDetail(fmt.Sprintf("[green]logs[-]  %s", name))
+	a.switchToDetail(fmt.Sprintf("[green]logs (tailing)[-]  %s", name))
 	go func() {
-		out, _ := a.client.Logs(ns, name)
-		a.tapp.QueueUpdateDraw(func() {
-			a.detailRaw = out
-			a.detailIsLogs = true
-			a.renderDetailContent()
-			a.detail.ScrollToEnd()
+		err := a.client.TailLogs(ns, name, func(line string) {
+			a.tapp.QueueUpdateDraw(func() {
+				a.detailRaw += line + "\n"
+				a.detailIsLogs = true
+				a.renderDetailContent()
+				a.detail.ScrollToEnd()
+			})
 		})
+		if err != nil {
+			a.tapp.QueueUpdateDraw(func() {
+				a.renderHeader(fmt.Sprintf("[red]error tailing logs: %s[-]", err))
+			})
+		}
 	}()
 }
 

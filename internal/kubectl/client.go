@@ -1,6 +1,7 @@
 package kubectl
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -133,6 +134,36 @@ func (c *Client) Logs(namespace, name string) (string, error) {
 	args = append(args, "logs", name, "--tail=500")
 	args = append(args, c.nsArgs(namespace)...)
 	return kubectlOutput(args...)
+}
+
+// TailLogs streams pod logs with a callback for each line received.
+// The callback is called with new log lines as they arrive.
+// Returns an error channel that closes when the stream ends or an error occurs.
+func (c *Client) TailLogs(namespace, name string, callback func(line string)) error {
+	args := c.baseArgs()
+	args = append(args, "logs", name, "-f", "--tail=50")
+	args = append(args, c.nsArgs(namespace)...)
+	
+	cmd := exec.Command("kubectl", args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	
+	// Read lines in a separate goroutine
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			callback(scanner.Text())
+		}
+		cmd.Wait()
+	}()
+	
+	return nil
 }
 
 // Edit opens an interactive kubectl edit session, connecting stdin/stdout/stderr
